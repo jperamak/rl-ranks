@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+fetched*.json
+fetched*.csv
+distribution*.json
+seasons/
+output/
+*.json
