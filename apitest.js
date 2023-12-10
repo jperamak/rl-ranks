@@ -1,4 +1,6 @@
 const commandLineArgs = require('command-line-args');
+const utils = require('./utils');
+
 const {
     parseRegistrations,
     readPageJson,
@@ -31,6 +33,23 @@ const parseRow = (row, type) => {
                 reserve: row[`Player ${i} Varapelaaja`]
             });
         }
+        return team;
+    } else if (type === 'pappa') {
+        console.log(row);
+        const team = {
+            name: row[Object.keys(row)[0]], // asdf
+            players: []
+        };
+        for (let i = 1; i < 6; i++) {
+            const player = {
+                name: row[`Player ${i} name`],
+                profile: row[`Player ${i} RL-Tracker -profiili`],
+                signupRank: row[`Player ${i} Rank (3v3)`],
+                signupMmr: row[`P${i} MMR`]
+            };
+            if (player.name) team.players.push(player);
+        }
+        log(team);
         return team;
     } else throw new Error('not implemented');
 };
@@ -79,6 +98,8 @@ const getRanks = (data, peakData) => {
     return ranks;
 };
 
+const wrap = (name) => `"${name}"`;
+
 const teamToCSV = (teams) => {
     let csvString =
         'Team Name;' +
@@ -93,14 +114,19 @@ const teamToCSV = (teams) => {
         'Avg Rank;' +
         'P1;' +
         'P1 MMR;' +
+        'P1 Peak;' +
         'P2;' +
         'P2 MMR;' +
+        'P2 Peak;' +
         'P3;' +
         'P3 MMR;' +
+        'P3 Peak;' +
         'P4;' +
         'P4 MMR;' +
+        'P4 Peak;' +
         'P5;' +
         'P5 MMR;' +
+        'P5 Peak;' +
         '\n';
     teams.forEach((team) => {
         let teamLine =
@@ -113,13 +139,24 @@ const teamToCSV = (teams) => {
             team.mmr +
             ';;;;;;;';
         team.players.forEach((player) => {
-            teamLine +=
-                `=HYPERLINK("${player.profileUrl}", "${player.name}")` + ';' + player.mmr + ';';
+            teamLine += `${wrap(player.name)}` + ';' + player.mmr + ';';
         });
         teamLine += '\n';
         csvString += teamLine;
     });
     return csvString;
+};
+
+const calculateTeamMMR = (teams, playlist) => {
+    teams.forEach((team) => {
+        team.players.forEach((player) => {
+            console.log(player);
+            player.mmr = player.ranks[playlist]?.current ?? 0;
+            player.peak = player.ranks[playlist]?.peak ?? 0;
+        });
+        team.mmr = utils.calculateTeamMMR(team);
+    });
+    return teams;
 };
 
 const fetchTrackerData = async (teamsInfo) => {
@@ -144,7 +181,7 @@ const fetchTrackerData = async (teamsInfo) => {
             };
             for (let pIdx = 0; pIdx < 5; pIdx++) {
                 const player = team.players[pIdx];
-                if (!player.name) break;
+                if (!player || !player.name) break;
                 console.log(
                     `Fetching ${player.name} - calls: ${++calls} ${
                         (Date.now() - start) / 1000
@@ -165,10 +202,8 @@ const fetchTrackerData = async (teamsInfo) => {
                 // 5000ms delay -> 50 calls per 150 seconds, so 1 call per 3 seconds is too much
                 await delay(10000);
             }
-            //calculate some mmr?
             teams.push(t);
         }
-        const time = Date.now();
         saveToFile(`output/trackerdata-${time}.json`, JSON.stringify(teams));
     } finally {
         await browser.close();
@@ -180,31 +215,38 @@ const log = (str) => {
 };
 
 const debug = false;
-
+const time = Date.now();
 const options = commandLineArgs(optionDefinitions);
-const { verbose = false, writetofile = false, signups, help, kana, pappa } = options;
-if (help || !signups || (kana && pappa)) {
-    const helpStr = `usage: node teams.js [--help] [-k] [-p] [-v] [-w] <signupsfile>
+const { verbose = false, signups, help, kana, pappa } = options;
+
+const doIt = async () => {
+    if (help || !signups || (kana && pappa)) {
+        const helpStr = `usage: node teams.js [--help] [-k] [-p] [-v] [-w] <signupsfile>
         --help              show this message
         --kana, -k          kanaliiga signups style, exclusive with pappa
         --pappa, -p         pappaliiga signups style, exclusive with kana
         --verbose, -v       show fetched data
-        --writetofile, -w   save results to file
         `;
-    console.log(helpStr);
-} else {
-    if (!debug) {
-        const signupsType = pappa ? 'pappa' : 'kana';
-        // parse registrations
-        const signupsData = parseRegistrations(signups);
-        // parse teams
-        const teamsInfo = parseTeams(signupsData, signupsType);
-        // validate profiles (missing tracker urls)
-        validateProfiles(teamsInfo);
-        // fetch and save player data
-        const teamsData = fetchTrackerData(teamsInfo);
+        console.log(helpStr);
+    } else {
+        if (!debug) {
+            const signupsType = pappa ? 'pappa' : 'kana';
+            // parse registrations
+            const signupsData = parseRegistrations(signups, signupsType === 'kana');
+            // parse teams
+            const teamsInfo = parseTeams(signupsData, signupsType);
+            // validate profiles (missing tracker urls)
+            validateProfiles(teamsInfo);
+            // fetch and save player data
+            const teamsData = await fetchTrackerData(teamsInfo);
+            // calculate team mmr
+            const teamsWithMmr3v3 = calculateTeamMMR(teamsData, 'Ranked Standard 3v3');
+            const teamsWithMmr2v2 = calculateTeamMMR(teamsInfo, 'Ranked Doubles 2v2');
+            // create gsheets
+            saveToFile(`output/gsheets-${time}-3v3.csv`, teamToCSV(teamsWithMmr3v3));
+            saveToFile(`output/gsheets-${time}-2v2.csv`, teamToCSV(teamsWithMmr2v2));
+        }
     }
-    //const teamsData = require('./trackerdata-1694497211387.json');
-    // create gsheets
-    //saveToFile(`ghseets-${time}.csv`, teamToCSV(fetchedTeams));
-}
+};
+
+doIt();

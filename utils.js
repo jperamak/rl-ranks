@@ -10,10 +10,11 @@ exports.saveToFile = (filename, data) => {
     });
 };
 
-exports.parseRegistrations = (file) => {
+exports.parseRegistrations = (file, kana = true) => {
     console.log('Parsing registrations');
     const registrations = fs.readFileSync(file);
-    return parse(registrations.toString(), { columns: true });
+    if (kana) return parse(registrations.toString(), { columns: true });
+    else return parse(registrations.toString(), { columns: true, delimiter: ';' });
 };
 
 exports.setupPuppeteer = async () => {
@@ -75,7 +76,7 @@ exports.calculateTeamMMR = (team) => {
         .splice(0, 3);
     total = 0;
     top3mmr.forEach((a) => (total += a * a));
-    return Math.sqrt((1 / top3mmr.length) * total);
+    return Math.sqrt((1 / top3mmr.length) * total).toPrecision(4);
 };
 
 const TRACKER_URL_BASE = 'https://rocketleague.tracker.network/rocket-league/profile/';

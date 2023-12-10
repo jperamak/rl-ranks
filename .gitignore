@@ -4,5 +4,6 @@ fetched*.json
 fetched*.csv
 distribution*.json
 seasons/
-output/
+output/*.json
+output/*.csv
 *.json
