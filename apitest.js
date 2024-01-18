@@ -162,11 +162,12 @@ const calculateTeamMMR = (teams, playlist) => {
 const fetchTrackerData = async (teamsInfo) => {
     // prepare puppeteer
     const { browser, page } = await setupPuppeteer();
+    const teams = [];
+
     try {
         // get distribution data
         //const distributionRaw = await readPageJson(page, API_DISTRIBUTIONS);
         let calls = 0;
-        const teams = [];
         const start = Date.now();
         for (tIdx = 0; tIdx < teamsInfo.length; tIdx++) {
             const team = teamsInfo[tIdx];
@@ -208,6 +209,7 @@ const fetchTrackerData = async (teamsInfo) => {
     } finally {
         await browser.close();
     }
+    return teams;
 };
 
 const log = (str) => {
@@ -241,7 +243,7 @@ const doIt = async () => {
             const teamsData = await fetchTrackerData(teamsInfo);
             // calculate team mmr
             const teamsWithMmr3v3 = calculateTeamMMR(teamsData, 'Ranked Standard 3v3');
-            const teamsWithMmr2v2 = calculateTeamMMR(teamsInfo, 'Ranked Doubles 2v2');
+            const teamsWithMmr2v2 = calculateTeamMMR(teamsData, 'Ranked Doubles 2v2');
             // create gsheets
             saveToFile(`output/gsheets-${time}-3v3.csv`, teamToCSV(teamsWithMmr3v3));
             saveToFile(`output/gsheets-${time}-2v2.csv`, teamToCSV(teamsWithMmr2v2));
