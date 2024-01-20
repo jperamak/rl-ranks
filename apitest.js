@@ -139,7 +139,7 @@ const teamToCSV = (teams) => {
             team.mmr +
             ';;;;;;;';
         team.players.forEach((player) => {
-            teamLine += `${wrap(player.name)}` + ';' + player.mmr + ';';
+            teamLine += `${wrap(player.name)}` + ';' + player.mmr + ';' + player.peak + ';';
         });
         teamLine += '\n';
         csvString += teamLine;
