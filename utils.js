@@ -10,11 +10,10 @@ exports.saveToFile = (filename, data) => {
     });
 };
 
-exports.parseRegistrations = (file, kana = true) => {
+exports.parseRegistrations = (file) => {
     console.log('Parsing registrations');
     const registrations = fs.readFileSync(file);
-    if (kana) return parse(registrations.toString(), { columns: true });
-    else return parse(registrations.toString(), { columns: true, delimiter: ';' });
+    return parse(registrations.toString(), { columns: true });
 };
 
 exports.setupPuppeteer = async () => {

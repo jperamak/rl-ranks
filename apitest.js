@@ -37,15 +37,16 @@ const parseRow = (row, type) => {
     } else if (type === 'pappa') {
         console.log(row);
         const team = {
-            name: row[Object.keys(row)[0]], // asdf
+            name: row['Team name'],
+            captain: row['Contact Kapteenin Discord ID (julkinen)'],
             players: []
         };
         for (let i = 1; i < 6; i++) {
             const player = {
                 name: row[`Player ${i} name`],
                 profile: row[`Player ${i} RL-Tracker -profiili`],
-                signupRank: row[`Player ${i} Rank (3v3)`],
-                signupMmr: row[`P${i} MMR`]
+                signupRank: row[`Player ${i} Rank 3v3 (nykyinen)`],
+                reserve: row[`Player ${i} Varapelaaja`]
             };
             if (player.name) team.players.push(player);
         }
@@ -166,7 +167,7 @@ const fetchTrackerData = async (teamsInfo) => {
 
     try {
         // get distribution data
-        //const distributionRaw = await readPageJson(page, API_DISTRIBUTIONS);
+        const distributionRaw = await readPageJson(page, API_DISTRIBUTIONS);
         let calls = 0;
         const start = Date.now();
         for (tIdx = 0; tIdx < teamsInfo.length; tIdx++) {
@@ -234,7 +235,7 @@ const doIt = async () => {
         if (!debug) {
             const signupsType = pappa ? 'pappa' : 'kana';
             // parse registrations
-            const signupsData = parseRegistrations(signups, signupsType === 'kana');
+            const signupsData = parseRegistrations(signups);
             // parse teams
             const teamsInfo = parseTeams(signupsData, signupsType);
             // validate profiles (missing tracker urls)

@@ -7,3 +7,4 @@ seasons/
 output/*.json
 output/*.csv
 *.json
+!.eslintrc.json
