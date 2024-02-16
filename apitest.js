@@ -18,6 +18,7 @@ const delay = (time) => {
 };
 
 const parseRow = (row, type) => {
+    log(row);
     if (type === 'kana') {
         const team = {
             name: row['Team name'],
@@ -33,9 +34,9 @@ const parseRow = (row, type) => {
                 reserve: row[`Player ${i} Varapelaaja`]
             });
         }
+        log(team);
         return team;
     } else if (type === 'pappa') {
-        console.log(row);
         const team = {
             name: row['Team name'],
             captain: row['Contact Kapteenin Discord ID (julkinen)'],
@@ -104,15 +105,12 @@ const wrap = (name) => `"${name}"`;
 const teamToCSV = (teams) => {
     let csvString =
         'Team Name;' +
-        'Captain;' +
-        'Reserve Captain;' +
         'Top3 RMSQ;' +
         'Team RMSQ;' +
         '(top mmr + top3)/2;' +
         '(top mmr + avg mmr)/2;' +
         'Top 3 avg;' +
         'Team avg;' +
-        'Avg Rank;' +
         'P1;' +
         'P1 MMR;' +
         'P1 Peak;' +
@@ -130,15 +128,7 @@ const teamToCSV = (teams) => {
         'P5 Peak;' +
         '\n';
     teams.forEach((team) => {
-        let teamLine =
-            wrap(team.name) +
-            ';' +
-            wrap(team.captain) +
-            ';' +
-            wrap(team.reserve) +
-            ';' +
-            team.mmr +
-            ';;;;;;;';
+        let teamLine = wrap(team.name) + ';' + team.mmr + ';;;;;;';
         team.players.forEach((player) => {
             teamLine += `${wrap(player.name)}` + ';' + player.mmr + ';' + player.peak + ';';
         });
@@ -149,15 +139,21 @@ const teamToCSV = (teams) => {
 };
 
 const calculateTeamMMR = (teams, playlist) => {
+    const teamsWithMmr = [];
     teams.forEach((team) => {
-        team.players.forEach((player) => {
-            console.log(player);
-            player.mmr = player.ranks[playlist]?.current ?? 0;
-            player.peak = player.ranks[playlist]?.peak ?? 0;
+        const newTeam = { ...team };
+        newTeam.players = team.players.map((player) => {
+            log(player);
+            return {
+                ...player,
+                mmr: player.ranks[playlist]?.current ?? 0,
+                peak: player.ranks[playlist]?.peak ?? 0
+            };
         });
-        team.mmr = utils.calculateTeamMMR(team);
+        newTeam.mmr = utils.calculateTeamMMR(newTeam);
+        teamsWithMmr.push(newTeam);
     });
-    return teams;
+    return teamsWithMmr;
 };
 
 const fetchTrackerData = async (teamsInfo) => {
@@ -167,7 +163,7 @@ const fetchTrackerData = async (teamsInfo) => {
 
     try {
         // get distribution data
-        const distributionRaw = await readPageJson(page, API_DISTRIBUTIONS);
+        // const distributionRaw = await readPageJson(page, API_DISTRIBUTIONS);
         let calls = 0;
         const start = Date.now();
         for (tIdx = 0; tIdx < teamsInfo.length; tIdx++) {
@@ -201,7 +197,7 @@ const fetchTrackerData = async (teamsInfo) => {
                     ranks: getRanks(data, peakData)
                 };
                 t.players.push(p);
-                // 5000ms delay -> 50 calls per 150 seconds, so 1 call per 3 seconds is too much
+                // 1 call per 3 seconds is too often
                 await delay(10000);
             }
             teams.push(t);
@@ -220,7 +216,7 @@ const log = (str) => {
 const debug = false;
 const time = Date.now();
 const options = commandLineArgs(optionDefinitions);
-const { verbose = false, signups, help, kana, pappa } = options;
+const { verbose = false, signups, help, kana, pappa, json } = options;
 
 const doIt = async () => {
     if (help || !signups || (kana && pappa)) {
@@ -233,15 +229,20 @@ const doIt = async () => {
         console.log(helpStr);
     } else {
         if (!debug) {
-            const signupsType = pappa ? 'pappa' : 'kana';
-            // parse registrations
-            const signupsData = parseRegistrations(signups);
-            // parse teams
-            const teamsInfo = parseTeams(signupsData, signupsType);
-            // validate profiles (missing tracker urls)
-            validateProfiles(teamsInfo);
-            // fetch and save player data
-            const teamsData = await fetchTrackerData(teamsInfo);
+            let teamsData;
+            if (!json) {
+                const signupsType = pappa ? 'pappa' : 'kana';
+                // parse registrations
+                const signupsData = parseRegistrations(signups);
+                // parse teams
+                const teamsInfo = parseTeams(signupsData, signupsType);
+                // validate profiles (missing tracker urls)
+                validateProfiles(teamsInfo);
+                // fetch and save player data
+                teamsData = await fetchTrackerData(teamsInfo);
+            } else {
+                teamsData = require(signups);
+            }
             // calculate team mmr
             const teamsWithMmr3v3 = calculateTeamMMR(teamsData, 'Ranked Standard 3v3');
             const teamsWithMmr2v2 = calculateTeamMMR(teamsData, 'Ranked Doubles 2v2');
