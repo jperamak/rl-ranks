@@ -1,10 +1,3 @@
-exports.distributionRankNameXpath = (i) =>
-    `//*[@class="trn-table"]/tbody/tr[${i}]/td[1]/div/div/div[1]`;
-exports.distributionRankMMRXpath = (i) => `//*[@class="trn-table"]/tbody/tr[${i}]/td[2]`;
-
-exports.rankNameXpath = (i) => `//*[@class="trn-table"]/tbody/tr[${i}]/td[2]/div[1]`;
-exports.rankMMRXpath = (i) => `//*[@class="trn-table"]/tbody/tr[${i}]/td[3]/div/div[2]/div[1]/div`;
-
 exports.rankNames = {
     'Supersonic Legend': 'SSL',
     'Grand Champion III': 'GC3',
@@ -48,5 +41,6 @@ exports.optionDefinitions = [
     { name: 'writetofile', alias: 'w', type: Boolean },
     { name: 'help', type: Boolean },
     { name: 'kana', alias: 'k', type: Boolean },
-    { name: 'pappa', alias: 'p', type: Boolean }
+    { name: 'pappa', alias: 'p', type: Boolean },
+    { name: 'json', alias: 'j', type: Boolean }
 ];
