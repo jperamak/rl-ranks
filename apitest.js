@@ -82,14 +82,15 @@ const validateProfiles = (teams) => {
 };
 const API_DISTRIBUTIONS = 'https://api.tracker.gg/api/v1/rocket-league/distribution/13';
 
-const getRanks = (data, peakData) => {
+const getRanks = (data) => {
     if (!data || !data.data) {
         console.log('no data');
         return {};
     }
     const playlists = data.data.segments.filter((s) => s.type === 'playlist');
+    const peakData = data.data.segments.filter((s) => s.type === 'peak-rating');
     const peaks = {};
-    peakData.data.forEach((peak) => (peaks[peak.metadata.name] = peak.stats.peakRating.value));
+    peakData.forEach((peak) => (peaks[peak.metadata.name] = peak.stats.peakRating.value));
     const ranks = {};
     playlists.forEach((playlist) => {
         ranks[playlist.metadata.name] = {
@@ -187,14 +188,12 @@ const fetchTrackerData = async (teamsInfo) => {
                 );
                 const data = await readPageJson(page, profileUrl(player.profile));
                 log(data);
-                const peakData = await readPageJson(page, peaksUrl(player.profile));
-                log(peakData);
                 const p = {
                     name: player.name,
                     profile: player.profile,
                     signupRank: player.signupRank,
                     reserve: player.reserve,
-                    ranks: getRanks(data, peakData)
+                    ranks: getRanks(data)
                 };
                 t.players.push(p);
                 // 1 call per 3 seconds is too often
